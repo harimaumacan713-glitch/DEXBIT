@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "CoinX",
+  "description": "Dynamic Crypto Trading and Portfolio Application with Real-Time Price Tracking",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

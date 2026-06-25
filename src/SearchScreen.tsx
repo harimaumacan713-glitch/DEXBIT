@@ -45,7 +45,7 @@ const BottomNav = ({ currentScreen, setCurrentScreen }: { currentScreen: string,
       </svg>
       <span className="text-[11px] font-medium text-[#9ba4b5]">Chat</span>
     </button>
-    <button className="flex flex-col items-center gap-[5px]">
+    <button onClick={() => setCurrentScreen('portfolio')} className="flex flex-col items-center gap-[5px]">
       <svg className="w-[26px] h-[26px] text-[#9ba4b5]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="9" />
         <path d="M12 3v9h9" />
@@ -91,7 +91,7 @@ const ChartComponent = ({ data, isPositive }: { data: any[], isPositive: boolean
         lineColor: isPositive ? '#00a85a' : '#da304a',
         topColor: isPositive ? 'rgba(0, 168, 90, 0.2)' : 'rgba(218, 48, 74, 0.2)',
         bottomColor: isPositive ? 'rgba(0, 168, 90, 0)' : 'rgba(218, 48, 74, 0)',
-        lineWidth: 1.5,
+        lineWidth: 2,
       });
 
       if (data.length > 0) {

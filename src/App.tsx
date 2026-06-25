@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, signInWithGoogle, logout } from './firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, signInWithGoogle, logout } from './firebase';
 import PortfolioScreen from './PortfolioScreen';
 import SearchScreen from './SearchScreen';
 import ProfileScreen from './ProfileScreen';
@@ -463,16 +464,399 @@ const DashboardScreen = ({ user, setCurrentScreen }: { user: User | null, setCur
   </>
 );
 
+export type PortfolioAsset = {
+  code: string;
+  amount: number;
+  avgPrice: number;
+};
+
+export type Order = {
+  id: string;
+  symbol: string;
+  type: 'buy' | 'sell';
+  orderType: 'limit' | 'market';
+  price: number;
+  amount: number;
+  status: 'open' | 'filled' | 'cancelled';
+  timestamp: number;
+};
+
+export type HistoryItem = {
+  id: string;
+  symbol: string;
+  type: 'buy' | 'sell';
+  orderType: 'limit' | 'market';
+  price: number;
+  amount: number;
+  totalIDR: number;
+  status: 'filled';
+  timestamp: number;
+};
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('landing');
   const [selectedCoin, setSelectedCoin] = useState<string>('BTC');
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [tradingBalance, setTradingBalance] = useState<number>(2801641);
+  const [assets, setAssets] = useState<PortfolioAsset[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({});
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const fetchPrices = async () => {
+      try {
+        const res = await fetch('/api/prices');
+        const data: { symbol: string; price: string }[] = await res.json();
+        const priceMap: Record<string, number> = {};
+        data.forEach(item => {
+          if (item.symbol.endsWith('USDT')) {
+            const code = item.symbol.replace('USDT', '');
+            priceMap[code] = parseFloat(item.price);
+          }
+        });
+        setCurrentPrices(priceMap);
+      } catch (e) {
+        console.error('Failed to fetch prices in App.tsx', e);
+      }
+    };
+
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const openOrders = orders.filter(o => o.status === 'open');
+    if (openOrders.length === 0) return;
+
+    let changed = false;
+    const nextOrders = orders.map(order => {
+      if (order.status !== 'open') return order;
+      const currentPrice = currentPrices[order.symbol];
+      if (!currentPrice) return order;
+
+      if (order.type === 'buy') {
+        if (currentPrice <= order.price) {
+          changed = true;
+          return { ...order, status: 'filled' as const };
+        }
+      } else {
+        if (currentPrice >= order.price) {
+          changed = true;
+          return { ...order, status: 'filled' as const };
+        }
+      }
+      return order;
+    });
+
+    if (changed) {
+      const updatedAssets = [...assets];
+      const updatedHistory = [...history];
+      let updatedBalance = tradingBalance;
+
+      nextOrders.forEach((order, idx) => {
+        const oldOrder = orders[idx];
+        if (oldOrder.status === 'open' && order.status === 'filled') {
+          if (order.type === 'buy') {
+            const existing = updatedAssets.find(a => a.code === order.symbol);
+            if (existing) {
+              const newAmount = existing.amount + order.amount;
+              const newAvgPrice = ((existing.amount * existing.avgPrice) + (order.amount * order.price)) / newAmount;
+              const updatedAssetIdx = updatedAssets.findIndex(a => a.code === order.symbol);
+              updatedAssets[updatedAssetIdx] = { ...existing, amount: newAmount, avgPrice: newAvgPrice };
+            } else {
+              updatedAssets.push({ code: order.symbol, amount: order.amount, avgPrice: order.price });
+            }
+
+            const totalCostIDR = order.amount * order.price * 16000 * 1.001;
+            updatedHistory.unshift({
+              id: order.id,
+              symbol: order.symbol,
+              type: 'buy',
+              orderType: 'limit',
+              price: order.price,
+              amount: order.amount,
+              totalIDR: totalCostIDR,
+              status: 'filled',
+              timestamp: Date.now()
+            });
+          } else {
+            const totalRevenueIDR = order.amount * order.price * 16000 * 0.999;
+            updatedBalance += totalRevenueIDR;
+
+            updatedHistory.unshift({
+              id: order.id,
+              symbol: order.symbol,
+              type: 'sell',
+              orderType: 'limit',
+              price: order.price,
+              amount: order.amount,
+              totalIDR: totalRevenueIDR,
+              status: 'filled',
+              timestamp: Date.now()
+            });
+          }
+        }
+      });
+
+      setOrders(nextOrders);
+      setAssets(updatedAssets);
+      setHistory(updatedHistory);
+      setTradingBalance(updatedBalance);
+    }
+  }, [currentPrices, orders, assets, history, tradingBalance]);
+
+  const handleBuyAsset = (
+    symbol: string,
+    amount: number,
+    avgPrice: number,
+    totalCostIDR: number,
+    orderType: 'limit' | 'market' = 'market'
+  ) => {
+    const id = 'ord_' + Math.random().toString(36).substr(2, 9);
+    const timestamp = Date.now();
+
+    if (orderType === 'market') {
+      setTradingBalance(prev => Math.max(0, prev - totalCostIDR));
+      setAssets(prev => {
+        const existing = prev.find(a => a.code === symbol);
+        if (existing) {
+           const newAmount = existing.amount + amount;
+           const newAvgPrice = ((existing.amount * existing.avgPrice) + (amount * avgPrice)) / newAmount;
+           return prev.map(a => a.code === symbol ? { ...a, amount: newAmount, avgPrice: newAvgPrice } : a);
+        } else {
+           return [...prev, { code: symbol, amount, avgPrice }];
+        }
+      });
+      
+      const newOrder: Order = {
+        id,
+        symbol,
+        type: 'buy',
+        orderType: 'market',
+        price: avgPrice,
+        amount,
+        status: 'filled',
+        timestamp
+      };
+      
+      const newHistory: HistoryItem = {
+        id,
+        symbol,
+        type: 'buy',
+        orderType: 'market',
+        price: avgPrice,
+        amount,
+        totalIDR: totalCostIDR,
+        status: 'filled',
+        timestamp
+      };
+
+      setOrders(prev => [newOrder, ...prev]);
+      setHistory(prev => [newHistory, ...prev]);
+    } else {
+      setTradingBalance(prev => Math.max(0, prev - totalCostIDR));
+      
+      const newOrder: Order = {
+        id,
+        symbol,
+        type: 'buy',
+        orderType: 'limit',
+        price: avgPrice,
+        amount,
+        status: 'open',
+        timestamp
+      };
+      
+      setOrders(prev => [newOrder, ...prev]);
+    }
+  };
+
+  const handleSellAsset = (
+    symbol: string,
+    amount: number,
+    priceUSDT: number,
+    totalRevenueIDR: number,
+    orderType: 'limit' | 'market' = 'market'
+  ) => {
+    const id = 'ord_' + Math.random().toString(36).substr(2, 9);
+    const timestamp = Date.now();
+
+    if (orderType === 'market') {
+      setTradingBalance(prev => prev + totalRevenueIDR);
+      setAssets(prev => {
+        const existing = prev.find(a => a.code === symbol);
+        if (existing) {
+           const newAmount = existing.amount - amount;
+           if (newAmount <= 0.00000001) {
+                return prev.filter(a => a.code !== symbol);
+           }
+           return prev.map(a => a.code === symbol ? { ...a, amount: newAmount } : a);
+        }
+        return prev;
+      });
+
+      const newOrder: Order = {
+        id,
+        symbol,
+        type: 'sell',
+        orderType: 'market',
+        price: priceUSDT,
+        amount,
+        status: 'filled',
+        timestamp
+      };
+
+      const newHistory: HistoryItem = {
+        id,
+        symbol,
+        type: 'sell',
+        orderType: 'market',
+        price: priceUSDT,
+        amount,
+        totalIDR: totalRevenueIDR,
+        status: 'filled',
+        timestamp
+      };
+
+      setOrders(prev => [newOrder, ...prev]);
+      setHistory(prev => [newHistory, ...prev]);
+    } else {
+      setAssets(prev => {
+        const existing = prev.find(a => a.code === symbol);
+        if (existing) {
+          const newAmount = existing.amount - amount;
+          if (newAmount <= 0.00000001) {
+            return prev.filter(a => a.code !== symbol);
+          }
+          return prev.map(a => a.code === symbol ? { ...a, amount: newAmount } : a);
+        }
+        return prev;
+      });
+
+      const newOrder: Order = {
+        id,
+        symbol,
+        type: 'sell',
+        orderType: 'limit',
+        price: priceUSDT,
+        amount,
+        status: 'open',
+        timestamp
+      };
+
+      setOrders(prev => [newOrder, ...prev]);
+    }
+  };
+
+  const handleCancelOrder = (orderId: string) => {
+    setOrders(prevOrders => {
+      const order = prevOrders.find(o => o.id === orderId);
+      if (!order || order.status !== 'open') return prevOrders;
+
+      if (order.type === 'buy') {
+        const totalCostIDR = order.amount * order.price * 16000 * 1.001;
+        setTradingBalance(prev => prev + totalCostIDR);
+      } else {
+        setAssets(prevAssets => {
+          const existing = prevAssets.find(a => a.code === order.symbol);
+          if (existing) {
+            return prevAssets.map(a => a.code === order.symbol ? { ...a, amount: a.amount + order.amount } : a);
+          } else {
+            return [...prevAssets, { code: order.symbol, amount: order.amount, avgPrice: order.price }];
+          }
+        });
+      }
+
+      return prevOrders.map(o => o.id === orderId ? { ...o, status: 'cancelled' as const } : o);
+    });
+  };
+
+  useEffect(() => {
+    let isInitialLoad = true;
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        const path = `users/${currentUser.uid}`;
+        try {
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setTradingBalance(data.tradingBalance ?? 2801641);
+            setAssets(data.assets ?? []);
+            setOrders(data.orders ?? []);
+            setHistory(data.history ?? []);
+          } else {
+            // Initialize new user
+            try {
+              await setDoc(userDocRef, {
+                tradingBalance: 2801641,
+                assets: [],
+                orders: [],
+                history: []
+              });
+            } catch (err) {
+              handleFirestoreError(err, OperationType.WRITE, path);
+            }
+            setTradingBalance(2801641);
+            setAssets([]);
+            setOrders([]);
+            setHistory([]);
+          }
+        } catch (e) {
+          handleFirestoreError(e, OperationType.GET, path);
+        }
         setCurrentScreen('dashboard');
       } else {
         setCurrentScreen('landing');
@@ -482,6 +866,15 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user && !loading) {
+       const userDocRef = doc(db, 'users', user.uid);
+       const path = `users/${user.uid}`;
+       setDoc(userDocRef, { tradingBalance, assets, orders, history }, { merge: true })
+         .catch(err => handleFirestoreError(err, OperationType.WRITE, path));
+    }
+  }, [tradingBalance, assets, orders, history, user, loading]);
 
   const handleLogin = async () => {
     try {
@@ -507,10 +900,10 @@ export default function App() {
         {currentScreen === 'landing' && <LandingScreen onLogin={handleLogin} />}
         {currentScreen === 'dashboard' && <DashboardScreen user={user} setCurrentScreen={setCurrentScreen} />}
         {currentScreen === 'search' && <SearchScreen user={user} setCurrentScreen={setCurrentScreen} setSelectedCoin={(coin) => { setSelectedCoin(coin); setCurrentScreen('assetDetail'); }} />}
-        {currentScreen === 'profile' && <ProfileScreen user={user} onBack={() => setCurrentScreen('dashboard')} />}
+        {currentScreen === 'profile' && <ProfileScreen user={user} onBack={() => setCurrentScreen('dashboard')} tradingBalance={tradingBalance} assets={assets} />}
         {currentScreen === 'assetDetail' && <AssetDetailScreen symbol={selectedCoin} onBack={() => setCurrentScreen('search')} setCurrentScreen={setCurrentScreen} />}
-        {currentScreen === 'transaction' && <TransactionScreen symbol={selectedCoin} onBack={() => setCurrentScreen('assetDetail')} />}
-        {currentScreen === 'portfolio' && <PortfolioScreen setCurrentScreen={setCurrentScreen} />}
+        {currentScreen === 'transaction' && <TransactionScreen symbol={selectedCoin} onBack={() => setCurrentScreen('assetDetail')} tradingBalance={tradingBalance} assets={assets} onBuy={handleBuyAsset} onSell={handleSellAsset} />}
+        {currentScreen === 'portfolio' && <PortfolioScreen setCurrentScreen={setCurrentScreen} tradingBalance={tradingBalance} assets={assets} orders={orders} history={history} onCancelOrder={handleCancelOrder} />}
       </div>
     </div>
   );

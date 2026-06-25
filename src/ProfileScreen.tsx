@@ -71,7 +71,42 @@ const CatLogo = () => (
   </svg>
 );
 
-export default function ProfileScreen({ user, onBack }: { user: User | null, onBack: () => void }) {
+export default function ProfileScreen({ user, onBack, tradingBalance, assets }: { user: User | null, onBack: () => void, tradingBalance: number, assets: any[] }) {
+  const [currentPrices, setCurrentPrices] = React.useState<Record<string, number>>({});
+
+  React.useEffect(() => {
+    const fetchPrice = async () => {
+      try {
+        const res = await fetch('https://api.binance.com/api/v3/ticker/price');
+        const data: {symbol: string, price: string}[] = await res.json();
+        
+        const priceMap: Record<string, number> = {};
+        data.forEach(item => {
+           if (item.symbol.endsWith('USDT')) {
+               const code = item.symbol.replace('USDT', '');
+               priceMap[code] = parseFloat(item.price);
+           }
+        });
+        
+        setCurrentPrices(priceMap);
+      } catch (e) {
+        console.error('Failed to fetch prices', e);
+      }
+    };
+
+    if (assets.length > 0) {
+        fetchPrice();
+    }
+  }, [assets]);
+
+  const IDR_RATE = 16000;
+  const totalMarketValue = assets.reduce((acc, asset) => {
+      const currentPriceUSDT = currentPrices[asset.code] || asset.avgPrice;
+      const currentPriceIDR = currentPriceUSDT * IDR_RATE;
+      return acc + (asset.amount * currentPriceIDR);
+  }, 0);
+
+  const totalEquity = tradingBalance + totalMarketValue;
   const menuGroups = [
     {
       title: 'Akun',
@@ -163,11 +198,11 @@ export default function ProfileScreen({ user, onBack }: { user: User | null, onB
         <div className="w-full flex justify-between px-2 mb-6">
           <div className="flex flex-col items-center flex-1">
             <span className="text-[10px] text-gray-400 font-medium mb-1">Total Trading Balance</span>
-            <span className="text-[12px] font-bold text-gray-900">Rp2,911,117</span>
+            <span className="text-[12px] font-bold text-gray-900">Rp{tradingBalance.toLocaleString('id-ID', {maximumFractionDigits: 0})}</span>
           </div>
           <div className="flex flex-col items-center flex-1">
             <span className="text-[10px] text-gray-400 font-medium mb-1">Total Equity</span>
-            <span className="text-[12px] font-bold text-gray-900">Rp50,454,370</span>
+            <span className="text-[12px] font-bold text-gray-900">Rp{totalEquity.toLocaleString('id-ID', {maximumFractionDigits: 0})}</span>
           </div>
         </div>
 

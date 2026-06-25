@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Share2, Star, AlarmClock, ChevronDown, Moon, Settings2, LineChart as LineChartIcon, Edit, Info, ChevronRight, CalendarDays, X, Plus, Lock, Activity } from 'lucide-react';
+import { ChevronLeft, Share2, Star, AlarmClock, ChevronDown, Moon, Settings2, LineChart as LineChartIcon, Edit, Info, ChevronRight, CalendarDays, X, Plus, Lock, Activity, BarChart3 } from 'lucide-react';
 import { createChart, ColorType, CrosshairMode, LineStyle, AreaSeries, LineSeries } from 'lightweight-charts';
+import { getFinancialDataForSymbol, convertToPercentage, getBalanceSheetData, getCashFlowData } from './financialData';
 
 const symbolToId: Record<string, string> = {
   'BTC': 'bitcoin', 'ETH': 'ethereum', 'BNB': 'binancecoin', 'SOL': 'solana', 'XRP': 'ripple',
@@ -67,7 +68,7 @@ const ChartComponent = ({ data, isPositive, prevClose }: { data: any[], isPositi
         lineColor: isPositive ? '#00a85a' : '#da304a',
         topColor: isPositive ? 'rgba(0, 168, 90, 0.2)' : 'rgba(218, 48, 74, 0.2)',
         bottomColor: isPositive ? 'rgba(0, 168, 90, 0)' : 'rgba(218, 48, 74, 0)',
-        lineWidth: 1.5,
+        lineWidth: 2,
       });
 
       if (data.length > 0) {
@@ -105,6 +106,128 @@ const ChartComponent = ({ data, isPositive, prevClose }: { data: any[], isPositi
   }, [data, isPositive]);
 
   return <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />;
+};
+
+const BrokerDistributionSankey = () => {
+  const leftNodes = [
+    { id: 'XL', name: 'XL', val: '231.10 B', color: '#9d4edd', height: 30, top: 0 },
+    { id: 'CC', name: 'CC', val: '', color: '#00a85a', height: 9, top: 34 },
+    { id: 'AK', name: 'AK', val: '', color: '#da304a', height: 9, top: 45 },
+    { id: 'YP', name: 'YP', val: '', color: '#da304a', height: 9, top: 56 },
+    { id: 'YU', name: 'YU', val: '', color: '#da304a', height: 9, top: 67 },
+    { id: 'MG', name: 'MG', val: '', color: '#9d4edd', height: 9, top: 78 },
+    { id: 'XC', name: 'XC', val: '', color: '#9d4edd', height: 9, top: 89 },
+  ];
+
+  const rightNodes = [
+    { id: 'XL', name: 'XL', val: '43.43 B', color: '#9d4edd', height: 12, top: 0 },
+    { id: 'CC', name: 'CC', val: '22.28 B', color: '#00a85a', height: 12, top: 15 },
+    { id: 'AK', name: 'AK', val: '26.77 B', color: '#da304a', height: 12, top: 30 },
+    { id: 'YP', name: 'YP', val: '16.06 B', color: '#da304a', height: 12, top: 45 },
+    { id: 'XC', name: 'XC', val: '8.24 B', color: '#9d4edd', height: 12, top: 60 },
+    { id: 'MG', name: 'MG', val: '12.97 B', color: '#9d4edd', height: 12, top: 75 },
+    { id: 'IF', name: 'IF', val: '7.12 B', color: '#9d4edd', height: 12, top: 90 },
+  ];
+
+  const flows = [
+    { from: 15, to: 6, width: 10, color: '#9d4edd' },
+    { from: 15, to: 21, width: 5, color: '#00a85a' },
+    { from: 15, to: 36, width: 8, color: '#da304a' },
+    { from: 15, to: 51, width: 4, color: '#da304a' },
+    { from: 15, to: 66, width: 3, color: '#9d4edd' },
+    { from: 15, to: 81, width: 3, color: '#9d4edd' },
+    { from: 15, to: 96, width: 2, color: '#9d4edd' },
+    { from: 38.5, to: 21, width: 4, color: '#00a85a' },
+    { from: 49.5, to: 36, width: 4, color: '#da304a' },
+    { from: 60.5, to: 51, width: 3, color: '#da304a' },
+    { from: 71.5, to: 51, width: 2, color: '#da304a' },
+    { from: 82.5, to: 81, width: 4, color: '#9d4edd' },
+    { from: 93.5, to: 66, width: 2, color: '#9d4edd' },
+  ];
+
+  return (
+    <div className="w-full relative h-[250px] my-2 select-none">
+      {/* Column Titles */}
+      <div className="absolute top-[-22px] left-0 right-0 flex justify-between px-1">
+        <span className="text-[11px] font-bold text-[#00a85a]">Buyer</span>
+        <span className="text-[11px] font-bold text-[#da304a]">Seller</span>
+      </div>
+
+      {/* SVG Flow lines in the middle */}
+      <svg 
+        className="absolute inset-0 w-full h-full pointer-events-none" 
+        viewBox="0 0 100 100" 
+        preserveAspectRatio="none"
+      >
+        <g opacity="0.32">
+          {flows.map((flow, i) => (
+            <path
+              key={i}
+              d={`M 15,${flow.from} C 45,${flow.from} 55,${flow.to} 80,${flow.to}`}
+              fill="none"
+              stroke={flow.color}
+              strokeWidth={flow.width * 0.4}
+              strokeLinecap="round"
+            />
+          ))}
+        </g>
+      </svg>
+
+      {/* Left Column Nodes */}
+      <div className="absolute left-0 top-0 bottom-0 w-[15%] flex flex-col justify-between">
+        {leftNodes.map((node) => (
+          <div 
+            key={node.id} 
+            className="absolute left-0 w-full flex items-center"
+            style={{ 
+              top: `${node.top}%`, 
+              height: `${node.height}%`,
+            }}
+          >
+            {/* The vertical colored bar on the far left */}
+            <div 
+              className="w-1.5 h-full rounded-r-[2px]" 
+              style={{ backgroundColor: node.color }}
+            />
+            {/* Label / Badge */}
+            {node.id === 'XL' ? (
+              <div className="absolute left-3 bg-gray-100 border border-gray-200/60 rounded px-1.5 py-0.5 flex items-center gap-1 shadow-sm whitespace-nowrap z-20">
+                <span className="text-[9px] font-bold text-gray-800">XL</span>
+                <span className="text-[9px] font-semibold text-gray-500">231.10 B</span>
+              </div>
+            ) : (
+              <span className="text-[10px] font-bold text-gray-700 ml-2.5">{node.name}</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Right Column Nodes */}
+      <div className="absolute right-0 top-0 bottom-0 w-[20%] flex flex-col justify-between">
+        {rightNodes.map((node) => (
+          <div 
+            key={node.id} 
+            className="absolute right-0 w-full flex items-center justify-end"
+            style={{ 
+              top: `${node.top}%`, 
+              height: `${node.height}%`,
+            }}
+          >
+            {/* Labels aligned to the right */}
+            <div className="mr-2.5 flex items-center gap-1 text-[9px] font-semibold text-gray-500 whitespace-nowrap">
+              <span>{node.val}</span>
+              <span className="font-bold text-gray-800">{node.name}</span>
+            </div>
+            {/* The vertical colored bar on the far right */}
+            <div 
+              className="w-1.5 h-full rounded-l-[2px]" 
+              style={{ backgroundColor: node.color }}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 const BrokerFlowChart = ({ data }: { data: any[] }) => {
@@ -149,7 +272,7 @@ const BrokerFlowChart = ({ data }: { data: any[] }) => {
       
       const largeWhaleSeries = chart.addSeries(LineSeries, {
         color: '#e63946', // red
-        lineWidth: 1.5,
+        lineWidth: 2,
         priceScaleId: 'left',
         priceFormat: {
           type: 'custom',
@@ -159,7 +282,7 @@ const BrokerFlowChart = ({ data }: { data: any[] }) => {
       
       const sharksSeries = chart.addSeries(LineSeries, {
         color: '#9d4edd', // purple
-        lineWidth: 1.5,
+        lineWidth: 2,
         priceScaleId: 'left',
         priceFormat: {
           type: 'custom',
@@ -169,7 +292,7 @@ const BrokerFlowChart = ({ data }: { data: any[] }) => {
       
       const retailSeries = chart.addSeries(LineSeries, {
         color: '#ffb703', // yellow
-        lineWidth: 1.5,
+        lineWidth: 2,
         priceScaleId: 'left',
         priceFormat: {
           type: 'custom',
@@ -244,7 +367,7 @@ const BottomNav = ({ currentScreen, setCurrentScreen }: { currentScreen: string,
       </svg>
       <span className="text-[11px] font-medium text-[#9ba4b5]">Chat</span>
     </button>
-    <button className="flex flex-col items-center gap-[5px]">
+    <button onClick={() => setCurrentScreen('portfolio')} className="flex flex-col items-center gap-[5px]">
       <svg className="w-[26px] h-[26px] text-[#9ba4b5]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="9" />
         <path d="M12 3v9h9" />
@@ -263,6 +386,18 @@ export default function AssetDetailScreen({ symbol, onBack, setCurrentScreen }: 
   const [history, setHistory] = useState<any[]>([]);
   const [timeRange, setTimeRange] = useState('1D');
   const [monthlyReturns, setMonthlyReturns] = useState<any>({});
+  const [accumulationRange, setAccumulationRange] = useState('1D');
+  
+  // Tab and Financial states
+  const [activeTab, setActiveTab] = useState('ORDERBOOK');
+  const [financialSubTab, setFinancialSubTab] = useState<'Laba Rugi' | 'Neraca' | 'Arus Kas'>('Laba Rugi');
+  const [financialPeriod, setFinancialPeriod] = useState<'Annual' | 'Quarterly'>('Annual');
+  const [financialUnit, setFinancialUnit] = useState<'$' | '%'>('$');
+  const [collapsedRows, setCollapsedRows] = useState<Record<string, boolean>>({
+    'Beban Usaha': false,
+    'Penghasilan/Beban Lain-Lain': false,
+    'Laba Bersih Yang Dapat Diatribusikan Kepada': false
+  });
   
   // Whale Flow state
   const [flows, setFlows] = useState({
@@ -546,167 +681,468 @@ export default function AssetDetailScreen({ symbol, onBack, setCurrentScreen }: 
           {['ORDERBOOK', 'ANALISIS', 'FINANSIAL', 'SEASONALITY', 'PERBANDINGAN'].map(tab => (
             <button 
               key={tab}
-              className={`text-[11px] font-bold py-3 px-1 relative shrink-0 ${tab === 'ORDERBOOK' ? 'text-[#00a85a]' : 'text-gray-400'}`}
+              onClick={() => setActiveTab(tab)}
+              className={`text-[11px] font-bold py-3 px-1 relative shrink-0 ${activeTab === tab ? 'text-[#00a85a]' : 'text-gray-400'}`}
             >
               {tab}
-              {tab === 'ORDERBOOK' && <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#00a85a]"></div>}
+              {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#00a85a]"></div>}
             </button>
           ))}
         </div>
 
         {/* 5. MARKET SUMMARY */}
-        <div className="px-4 py-4 grid grid-cols-3 gap-x-2 gap-y-3 text-[11px]">
-          {/* Col 1 */}
-          <div className="flex flex-col gap-3">
-            <div className="flex justify-between"><span className="text-gray-500">Open</span><span className="text-[#da304a] font-medium">{ticker ? formatNumber(ticker.price * 1.01, 0) : '-'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">High</span><span className="text-[#00a85a] font-medium">{ticker ? formatNumber(ticker.price * 1.05, 0) : '-'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Low</span><span className="text-[#da304a] font-medium">{ticker ? formatNumber(ticker.price * 0.95, 0) : '-'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">F Buy</span><span className="text-[#00a85a] font-medium">180.49B</span></div>
+        {activeTab === 'ORDERBOOK' && (
+          <div className="px-4 py-4 grid grid-cols-3 gap-x-2 gap-y-3 text-[11px]">
+            {/* Col 1 */}
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-between"><span className="text-gray-500">Open</span><span className="text-[#da304a] font-medium">{ticker ? formatNumber(ticker.price * 1.01, 0) : '-'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">High</span><span className="text-[#00a85a] font-medium">{ticker ? formatNumber(ticker.price * 1.05, 0) : '-'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Low</span><span className="text-[#da304a] font-medium">{ticker ? formatNumber(ticker.price * 0.95, 0) : '-'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">F Buy</span><span className="text-[#00a85a] font-medium">180.49B</span></div>
+            </div>
+            {/* Col 2 */}
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-between"><span className="text-gray-500">Prev</span><span className="text-gray-900 font-medium">{ticker ? formatNumber(prevClose, 0) : '-'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">ARA</span><span className="text-gray-900 font-medium flex items-center">{ticker ? formatNumber(prevClose * 1.25, 0) : '-'} <ChevronDown className="w-3 h-3 ml-0.5 text-gray-400" /></span></div>
+              <div className="flex justify-between"><span className="text-gray-500">ARB</span><span className="text-gray-900 font-medium flex items-center">{ticker ? formatNumber(prevClose * 0.75, 0) : '-'} <ChevronDown className="w-3 h-3 ml-0.5 text-gray-400" /></span></div>
+              <div className="flex justify-between"><span className="text-gray-500">F Sell</span><span className="text-[#da304a] font-medium">398.63B</span></div>
+            </div>
+            {/* Col 3 */}
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-between"><span className="text-gray-500">Lot</span><span className="text-[#da304a] font-medium">7.51M</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Val</span><span className="text-[#da304a] font-medium">1.44T</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Avg</span><span className="text-[#da304a] font-medium">1,917</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Freq</span><span className="text-[#00a85a] font-medium">124.13K</span></div>
+            </div>
           </div>
-          {/* Col 2 */}
-          <div className="flex flex-col gap-3">
-            <div className="flex justify-between"><span className="text-gray-500">Prev</span><span className="text-gray-900 font-medium">{ticker ? formatNumber(prevClose, 0) : '-'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">ARA</span><span className="text-gray-900 font-medium flex items-center">{ticker ? formatNumber(prevClose * 1.25, 0) : '-'} <ChevronDown className="w-3 h-3 ml-0.5 text-gray-400" /></span></div>
-            <div className="flex justify-between"><span className="text-gray-500">ARB</span><span className="text-gray-900 font-medium flex items-center">{ticker ? formatNumber(prevClose * 0.75, 0) : '-'} <ChevronDown className="w-3 h-3 ml-0.5 text-gray-400" /></span></div>
-            <div className="flex justify-between"><span className="text-gray-500">F Sell</span><span className="text-[#da304a] font-medium">398.63B</span></div>
-          </div>
-          {/* Col 3 */}
-          <div className="flex flex-col gap-3">
-            <div className="flex justify-between"><span className="text-gray-500">Lot</span><span className="text-[#da304a] font-medium">7.51M</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Val</span><span className="text-[#da304a] font-medium">1.44T</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Avg</span><span className="text-[#da304a] font-medium">1,917</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Freq</span><span className="text-[#00a85a] font-medium">124.13K</span></div>
-          </div>
-        </div>
+        )}
 
         {/* 6. ORDER BOOK TABLE */}
-        <div className="w-full border-t border-gray-100">
-          {/* Header */}
-          <div className="flex text-[11px] font-bold text-gray-900 bg-gray-50/50">
-            <div className="w-[15%] py-2 text-center border-r border-gray-100">Freq</div>
-            <div className="w-[20%] py-2 text-center border-r border-gray-100">Lot</div>
-            <div className="w-[15%] py-2 text-center border-r border-gray-100">Bid</div>
-            <div className="w-[15%] py-2 text-center border-r border-gray-100">Ask</div>
-            <div className="w-[20%] py-2 text-center border-r border-gray-100">Lot</div>
-            <div className="w-[15%] py-2 text-center">Freq</div>
+        {activeTab === 'ORDERBOOK' && (
+          <div className="w-full border-t border-gray-100">
+            {/* Header */}
+            <div className="flex text-[11px] font-bold text-gray-900 bg-gray-50/50">
+              <div className="w-[15%] py-2 text-center border-r border-gray-100">Freq</div>
+              <div className="w-[20%] py-2 text-center border-r border-gray-100">Lot</div>
+              <div className="w-[15%] py-2 text-center border-r border-gray-100">Bid</div>
+              <div className="w-[15%] py-2 text-center border-r border-gray-100">Ask</div>
+              <div className="w-[20%] py-2 text-center border-r border-gray-100">Lot</div>
+              <div className="w-[15%] py-2 text-center">Freq</div>
+            </div>
+            {/* Body */}
+            <div className="flex flex-col text-[11px]">
+              {[...Array(10)].map((_, i) => {
+                const bid = orderbook.bids[i] || ['1790', '48807'];
+                const ask = orderbook.asks[i] || ['1795', '65532'];
+                const bidFreq = i === 0 ? '-' : Math.floor(Math.random() * 200) + 10;
+                const askFreq = i === 0 ? '-' : Math.floor(Math.random() * 200) + 10;
+                return (
+                  <div key={i} className={`flex border-b border-gray-50 ${i%2===0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                    <div className="w-[15%] py-2 text-center text-[#8e85c8] border-r border-gray-50">{bidFreq}</div>
+                    <div className="w-[20%] py-2 text-center text-gray-700 relative border-r border-gray-50">
+                      <span className="relative z-10">{formatNumber(parseFloat(bid[1]), 0)}</span>
+                      <div className="absolute right-0 bottom-0 top-0 bg-[#da304a]/10" style={{ width: `${Math.random()*40}%` }}></div>
+                    </div>
+                    <div className="w-[15%] py-2 text-center text-[#da304a] font-medium bg-[#da304a]/5 border-r border-gray-50">{formatNumber(parseFloat(bid[0]), 0)}</div>
+                    
+                    <div className="w-[15%] py-2 text-center text-[#da304a] font-medium bg-[#da304a]/5 border-r border-gray-50">{formatNumber(parseFloat(ask[0]), 0)}</div>
+                    <div className="w-[20%] py-2 text-center text-gray-700 relative border-r border-gray-50">
+                      <span className="relative z-10">{formatNumber(parseFloat(ask[1]), 0)}</span>
+                      <div className="absolute left-0 bottom-0 top-0 bg-[#00a85a]/10" style={{ width: `${Math.random()*40}%` }}></div>
+                    </div>
+                    <div className="w-[15%] py-2 text-center text-[#8e85c8]">{askFreq}</div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-          {/* Body */}
-          <div className="flex flex-col text-[11px]">
-            {[...Array(10)].map((_, i) => {
-               const bid = orderbook.bids[i] || ['1790', '48807'];
-               const ask = orderbook.asks[i] || ['1795', '65532'];
-               const bidFreq = i === 0 ? '-' : Math.floor(Math.random() * 200) + 10;
-               const askFreq = i === 0 ? '-' : Math.floor(Math.random() * 200) + 10;
-               return (
-                 <div key={i} className={`flex border-b border-gray-50 ${i%2===0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                   <div className="w-[15%] py-2 text-center text-[#8e85c8] border-r border-gray-50">{bidFreq}</div>
-                   <div className="w-[20%] py-2 text-center text-gray-700 relative border-r border-gray-50">
-                     <span className="relative z-10">{formatNumber(parseFloat(bid[1]), 0)}</span>
-                     <div className="absolute right-0 bottom-0 top-0 bg-[#da304a]/10" style={{ width: `${Math.random()*40}%` }}></div>
-                   </div>
-                   <div className="w-[15%] py-2 text-center text-[#da304a] font-medium bg-[#da304a]/5 border-r border-gray-50">{formatNumber(parseFloat(bid[0]), 0)}</div>
-                   
-                   <div className="w-[15%] py-2 text-center text-[#da304a] font-medium bg-[#da304a]/5 border-r border-gray-50">{formatNumber(parseFloat(ask[0]), 0)}</div>
-                   <div className="w-[20%] py-2 text-center text-gray-700 relative border-r border-gray-50">
-                     <span className="relative z-10">{formatNumber(parseFloat(ask[1]), 0)}</span>
-                     <div className="absolute left-0 bottom-0 top-0 bg-[#00a85a]/10" style={{ width: `${Math.random()*40}%` }}></div>
-                   </div>
-                   <div className="w-[15%] py-2 text-center text-[#8e85c8]">{askFreq}</div>
-                 </div>
-               )
-            })}
-          </div>
-        </div>
+        )}
 
-        {/* 7. BROKER FLOW (WHALE & ORDER FLOW) */}
-        <div className="px-4 py-5 w-full bg-white border-t-8 border-gray-50">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-[16px] font-bold text-gray-900">Broker Flow</h3>
+        {/* 7. BROKER DISTRIBUTION (SANKEY FLOW) */}
+        {activeTab === 'ORDERBOOK' && (
+          <div className="px-4 py-5 w-full bg-white border-t-8 border-gray-50">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-[16px] font-bold text-gray-900">Broker Distribution</h3>
+                <Info className="w-4 h-4 text-gray-400" />
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+
+            {/* Dropdowns */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex-1 flex items-center justify-between border border-gray-200 rounded-md px-3 py-2">
+                <span className="text-[13px] text-gray-700">All Investor</span>
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </div>
+              <div className="flex-1 flex items-center justify-between border border-gray-200 rounded-md px-3 py-2">
+                <span className="text-[13px] text-gray-700">Regular</span>
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Toggles & Date */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <button className="px-4 py-1.5 rounded-full border border-[#00a85a] text-[#00a85a] text-[12px] font-bold bg-white">Value</button>
+                <button className="px-4 py-1.5 rounded-full border border-gray-200 text-gray-500 text-[12px] font-medium bg-white">Volume</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <ChevronLeft className="w-4 h-4 text-[#00a85a]" strokeWidth={2.5} />
+                <span className="text-[12px] font-bold text-[#00a85a]">
+                   {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
+                </span>
+                <CalendarDays className="w-4 h-4 text-[#00a85a]" strokeWidth={2} />
+                <ChevronRight className="w-4 h-4 text-[#00a85a]" strokeWidth={2.5} />
+              </div>
+            </div>
+
+            {/* Sankey Chart Area */}
+            <div className="w-full h-[250px] mt-8 mb-4 relative">
+               <BrokerDistributionSankey />
+            </div>
+
+            {/* Sankey Legend */}
+            <div className="flex items-center justify-center gap-5 mt-4 text-[11px] font-semibold text-gray-500">
+               <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#9d4edd]"></div>
+                  <span>Domestic</span>
+               </div>
+               <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#00a85a]"></div>
+                  <span>BUMN</span>
+               </div>
+               <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#da304a]"></div>
+                  <span>Foreign</span>
+               </div>
+            </div>
+
+            {/* Lihat Semua Button */}
+            <div className="flex justify-center mt-5 mb-2">
+               <button className="flex items-center gap-1 text-[13px] font-bold text-[#00a85a] hover:opacity-80 transition-opacity">
+                  <span>Lihat Semua</span>
+                  <ChevronRight className="w-4 h-4 text-[#00a85a]" strokeWidth={3} />
+               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 8. GRAFIK AKUMULASI PERGERAKAN HARGA & KATEGORI INVESTOR */}
+        {activeTab === 'ORDERBOOK' && (
+          <div className="px-4 py-5 w-full bg-white border-t-8 border-gray-50">
+            {/* Header */}
+            <div className="flex items-center gap-1.5 mb-4">
+              <h3 className="text-[15px] font-bold text-gray-900">Grafik Akumulasi Pergerakan Harga & Kategori Investor</h3>
               <Info className="w-4 h-4 text-gray-400" />
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
-          </div>
 
-          {/* Dropdowns */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex-1 flex items-center justify-between border border-gray-200 rounded-md px-3 py-2">
-              <span className="text-[13px] text-gray-700">All Investor</span>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </div>
-            <div className="flex-1 flex items-center justify-between border border-gray-200 rounded-md px-3 py-2">
-              <span className="text-[13px] text-gray-700">Regular</span>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </div>
-          </div>
-
-          {/* Toggles & Date */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <button className="px-4 py-1.5 rounded-full border border-[#00a85a] text-[#00a85a] text-[12px] font-bold bg-white">Value</button>
-              <button className="px-4 py-1.5 rounded-full border border-gray-200 text-gray-500 text-[12px] font-medium bg-white">Volume</button>
-            </div>
-            <div className="flex items-center gap-2">
-              <ChevronLeft className="w-4 h-4 text-[#00a85a]" strokeWidth={2.5} />
-              <span className="text-[12px] font-bold text-[#00a85a]">
-                 {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
-              </span>
-              <CalendarDays className="w-4 h-4 text-[#00a85a]" strokeWidth={2} />
-              <ChevronRight className="w-4 h-4 text-[#00a85a]" strokeWidth={2.5} />
-            </div>
-          </div>
-
-          {/* Chart Area */}
-          <div className="w-full h-[280px] mt-4 mb-2 relative">
-             <BrokerFlowChart data={chartData} />
-          </div>
-
-          {/* Time Range Selector */}
-          <div className="flex items-center justify-between px-1 py-2 mb-4">
-            <div className="flex items-center justify-between flex-1 mr-6">
-              {['1D', '1W', '1M', '3M', 'YTD', '1Y'].map(range => (
+            {/* Time Frame Selector */}
+            <div className="flex items-center gap-4 border-b border-gray-100 pb-2 mb-4 overflow-x-auto scrollbar-hide">
+              {['1D', '1W', '1M', '3M', 'YTD', '1Y', 'All'].map(range => (
                 <button 
                   key={range} 
-                  className={`text-[11px] font-bold ${range === '1D' ? 'text-gray-900' : 'text-gray-400'}`}
+                  onClick={() => setAccumulationRange(range)}
+                  className={`text-[12px] font-bold transition-all relative pb-1.5 whitespace-nowrap shrink-0 ${accumulationRange === range ? 'text-gray-900 font-extrabold' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   {range}
+                  {accumulationRange === range && (
+                    <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#00a85a] rounded-full"></div>
+                  )}
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 bg-gray-50 rounded-full px-2 py-1">
-               <LineChartIcon className="w-3.5 h-3.5 text-[#00a85a]" />
-               <Activity className="w-3.5 h-3.5 text-gray-400" />
+
+            {/* Chart Area with Overlays */}
+            <div className="w-full h-[280px] relative select-none">
+              {/* Left Y-Axis Badges Overlay (Whales, Sharks, Retail Flow Levels) */}
+              <div className="absolute left-1 top-4 bottom-4 flex flex-col justify-around z-10 pointer-events-none gap-2">
+                <div className="bg-[#e63946] text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                  75 B
+                </div>
+                <div className="bg-[#9d4edd] text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                  (21 B)
+                </div>
+                <div className="bg-[#ffb703] text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                  (52 B)
+                </div>
+              </div>
+
+              {/* Right Y-Axis Real-Time Price Badge Overlay */}
+              <div className="absolute right-1 top-1/3 z-10 pointer-events-none">
+                <div className="bg-[#00a85a] text-white text-[10px] font-bold px-1.5 py-1 rounded shadow-md border border-white flex items-center gap-1 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                  <span>${ticker ? formatNumber(ticker.price, 2) : '---'}</span>
+                </div>
+              </div>
+
+              {/* Multi-Line Chart */}
+              <BrokerFlowChart data={chartData} />
+            </div>
+
+            {/* Chart Legend Bullets */}
+            <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-[11px] font-semibold text-gray-500">
+               <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-[#00a85a]"></div>
+                  <span className="text-gray-700">Price</span>
+               </div>
+               <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-[#e63946]"></div>
+                  <span className="text-gray-700">Large Whales</span>
+               </div>
+               <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-[#9d4edd]"></div>
+                  <span className="text-gray-700">Sharks</span>
+               </div>
+               <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-[#ffb703]"></div>
+                  <span className="text-gray-700">Retail</span>
+               </div>
             </div>
           </div>
+        )}
 
-          {/* Tags Grid */}
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-50">
-                <div className="w-2 h-2 rounded-full bg-[#00a85a]"></div>
-                <span className="text-[12px] font-bold text-gray-900">Price</span>
-             </div>
-             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-50">
-                <div className="w-2 h-2 rounded-full bg-[#e63946]"></div>
-                <span className="text-[12px] font-bold text-gray-900">Large Whales</span>
-                <X className="w-3.5 h-3.5 text-gray-400 ml-1" />
-             </div>
-             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-purple-50">
-                <div className="w-2 h-2 rounded-full bg-[#9d4edd]"></div>
-                <span className="text-[12px] font-bold text-gray-900">Sharks</span>
-                <X className="w-3.5 h-3.5 text-gray-400 ml-1" />
-             </div>
-             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-yellow-50">
-                <div className="w-2 h-2 rounded-full bg-[#ffb703]"></div>
-                <span className="text-[12px] font-bold text-gray-900">Retail</span>
-                <X className="w-3.5 h-3.5 text-gray-400 ml-1" />
-             </div>
-             <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-50">
-                <Plus className="w-4 h-4 text-gray-500" />
-             </div>
-             <Lock className="w-4 h-4 text-gray-400 ml-1" />
+        {/* ANALISIS TAB */}
+        {activeTab === 'ANALISIS' && (
+          <div className="px-4 py-8 text-center text-gray-500 text-[13px] bg-white border-t border-gray-100">
+            <Activity className="w-8 h-8 text-[#00a85a] mx-auto mb-2" />
+            <p className="font-semibold text-gray-800">Analisis Sentimen & Tren</p>
+            <p className="text-gray-400 mt-1">Data analisis teknikal terbaru sedang dimuat...</p>
           </div>
-        </div>
+        )}
+
+        {/* SEASONALITY TAB */}
+        {activeTab === 'SEASONALITY' && (
+          <div className="px-4 py-8 text-center text-gray-500 text-[13px] bg-white border-t border-gray-100">
+            <CalendarDays className="w-8 h-8 text-[#00a85a] mx-auto mb-2" />
+            <p className="font-semibold text-gray-800">Data Seasionalitas Bulanan</p>
+            <p className="text-gray-400 mt-1">Seasionalitas historis {symbol} 5 tahun terakhir.</p>
+          </div>
+        )}
+
+        {/* PERBANDINGAN TAB */}
+        {activeTab === 'PERBANDINGAN' && (
+          <div className="px-4 py-8 text-center text-gray-500 text-[13px] bg-white border-t border-gray-100">
+            <LineChartIcon className="w-8 h-8 text-[#00a85a] mx-auto mb-2" />
+            <p className="font-semibold text-gray-800">Perbandingan Industri</p>
+            <p className="text-gray-400 mt-1">Membandingkan {symbol} dengan kompetitor sejenis.</p>
+          </div>
+        )}
+
+        {/* FINANSIAL TAB */}
+        {activeTab === 'FINANSIAL' && (() => {
+          const labaRugiRows = [
+            { key: 'Pendapatan', isBold: true, isCollapsible: false, isChild: false },
+            { key: 'Beban Pokok Penjualan', isBold: false, isCollapsible: false, isChild: false },
+            { key: 'Laba Kotor', isBold: true, isCollapsible: false, isChild: false },
+            { key: 'Beban Usaha', isBold: true, isCollapsible: true, isChild: false },
+            { key: 'Beban Penjualan', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Beban Usaha' },
+            { key: 'Beban Umum & Administrasi', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Beban Usaha' },
+            { key: 'Laba Usaha', isBold: true, isCollapsible: false, isChild: false },
+            { key: 'Penghasilan/Beban Lain-Lain', isBold: false, isCollapsible: true, isChild: false },
+            { key: 'Beban Keuangan', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Penghasilan/Beban Lain-Lain' },
+            { key: 'Pendapatan Keuangan', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Penghasilan/Beban Lain-Lain' },
+            { key: 'Laba Sebelum Pajak', isBold: true, isCollapsible: false, isChild: false },
+            { key: 'Beban Pajak Penghasilan', isBold: false, isCollapsible: false, isChild: false },
+            { key: 'Laba Bersih Dari Operasi Yang Dilanjutkan', isBold: false, isCollapsible: false, isChild: false },
+            { key: 'Pos Luar Biasa', isBold: false, isCollapsible: false, isChild: false },
+            { key: 'Laba Bersih Yang Dapat Diatribusikan Kepada', isBold: true, isCollapsible: true, isChild: false },
+            { key: 'Pemilik Entitas Induk', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Laba Bersih Yang Dapat Diatribusikan Kepada' },
+            { key: 'Others', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Laba Bersih Yang Dapat Diatribusikan Kepada' }
+          ];
+
+          const neracaRows = [
+            { key: 'Total Aset', isBold: true, isCollapsible: false, isChild: false },
+            { key: 'Aset Lancar', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Total Aset' },
+            { key: 'Aset Tidak Lancar', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Total Aset' },
+            { key: 'Total Liabilitas', isBold: true, isCollapsible: false, isChild: false },
+            { key: 'Liabilitas Jangka Pendek', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Total Liabilitas' },
+            { key: 'Liabilitas Jangka Panjang', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Total Liabilitas' },
+            { key: 'Total Ekuitas', isBold: true, isCollapsible: false, isChild: false },
+            { key: 'Ekuitas Pemilik Entitas Induk', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Total Ekuitas' },
+            { key: 'Kepentingan Non-Pengendali', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Total Ekuitas' }
+          ];
+
+          const arusKasRows = [
+            { key: 'Arus Kas dari Aktivitas Operasi', isBold: true, isCollapsible: false, isChild: false },
+            { key: 'Penerimaan Kas dari Pelanggan', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Arus Kas dari Aktivitas Operasi' },
+            { key: 'Pembayaran kepada Pemasok/Karyawan', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Arus Kas dari Aktivitas Operasi' },
+            { key: 'Arus Kas dari Aktivitas Investasi', isBold: true, isCollapsible: false, isChild: false },
+            { key: 'Perolehan Aset Tetap', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Arus Kas dari Aktivitas Investasi' },
+            { key: 'Arus Kas dari Aktivitas Pendanaan', isBold: true, isCollapsible: false, isChild: false },
+            { key: 'Penerimaan/Pembayaran Pinjaman', isBold: false, isCollapsible: false, isChild: true, parentKey: 'Arus Kas dari Aktivitas Pendanaan' },
+            { key: 'Kenaikan/Penurunan Kas Bersih', isBold: true, isCollapsible: false, isChild: false }
+          ];
+
+          let report = getFinancialDataForSymbol(symbol)[financialPeriod];
+          let activeRows = labaRugiRows;
+
+          if (financialSubTab === 'Neraca') {
+            report = getBalanceSheetData(symbol, financialPeriod);
+            activeRows = neracaRows;
+          } else if (financialSubTab === 'Arus Kas') {
+            report = getCashFlowData(symbol, financialPeriod);
+            activeRows = arusKasRows;
+          }
+
+          const getDisplayValue = (valStr: string, idx: number) => {
+            if (financialUnit === '%') {
+              if (financialSubTab === 'Laba Rugi') {
+                const rev = getFinancialDataForSymbol(symbol)[financialPeriod].rows['Pendapatan']?.[idx];
+                return rev ? convertToPercentage(valStr, rev) : valStr;
+              } else if (financialSubTab === 'Neraca') {
+                const assets = getBalanceSheetData(symbol, financialPeriod).rows['Total Aset']?.[idx];
+                return assets ? convertToPercentage(valStr, assets) : valStr;
+              } else {
+                const ops = getCashFlowData(symbol, financialPeriod).rows['Arus Kas dari Aktivitas Operasi']?.[idx];
+                return ops ? convertToPercentage(valStr, ops) : valStr;
+              }
+            }
+            return valStr;
+          };
+
+          return (
+            <div className="w-full bg-white select-none flex flex-col pb-4">
+              {/* 1. HEADER SUB-TAB */}
+              <div className="flex gap-2 px-4 pt-3 pb-1 bg-white">
+                {['Laba Rugi', 'Neraca', 'Arus Kas'].map(subTab => {
+                  const isActive = financialSubTab === subTab;
+                  return (
+                    <button
+                      key={subTab}
+                      onClick={() => setFinancialSubTab(subTab as any)}
+                      className={`px-[16px] py-[6px] rounded-full border text-[12px] font-bold transition-all ${
+                        isActive 
+                          ? 'bg-[#eefcf3] border-[#00a85a] text-[#00a85a]' 
+                          : 'bg-white border-gray-200 text-gray-400'
+                      }`}
+                    >
+                      {subTab}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 2. PERIOD & FILTER CONTROLS */}
+              <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+                <div className="relative">
+                  <button
+                    onClick={() => setFinancialPeriod(prev => prev === 'Annual' ? 'Quarterly' : 'Annual')}
+                    className="flex items-center gap-1 border border-gray-200 rounded-[4px] px-3 py-1.5 bg-white text-[11.5px] font-extrabold text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    <span>{financialPeriod === 'Annual' ? 'Annual' : 'Quarterly'}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center bg-gray-100 rounded-full p-0.5 border border-gray-200/50">
+                    <button
+                      onClick={() => setFinancialUnit('$')}
+                      className={`w-[26px] h-[26px] rounded-full flex items-center justify-center text-[12px] font-black transition-all ${
+                        financialUnit === '$' 
+                          ? 'bg-[#00a85a] text-white shadow-sm' 
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                    >
+                      $
+                    </button>
+                    <button
+                      onClick={() => setFinancialUnit('%')}
+                      className={`w-[26px] h-[26px] rounded-full flex items-center justify-center text-[12px] font-black transition-all ${
+                        financialUnit === '%' 
+                          ? 'bg-[#00a85a] text-white shadow-sm' 
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                    >
+                      %
+                    </button>
+                  </div>
+
+                  <button className="p-1.5 border border-gray-200 rounded-[4px] bg-white hover:bg-gray-50 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4 text-[#00a85a]" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. TABLE BODY */}
+              <div className="w-full overflow-x-auto scrollbar-hide">
+                <div className="min-w-[340px]">
+                  <div className="flex items-center justify-between border-b border-gray-100 py-3 px-4 bg-white">
+                    <div className="w-[36%] text-left text-[11px] font-bold text-gray-400">Rincian</div>
+                    <div className="flex-1 flex justify-between">
+                      {report.headers.map((hdr, idx) => (
+                        <div key={idx} className="w-[23%] text-right text-[11px] font-extrabold text-gray-900 pr-1">
+                          {hdr}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col">
+                    {activeRows.map((row, rowIdx) => {
+                      if (row.isChild && row.parentKey && collapsedRows[row.parentKey]) {
+                        return null;
+                      }
+
+                      const vals = report.rows[row.key] || ['-', '-', '-', '-'];
+                      const isCollapsed = collapsedRows[row.key];
+                      const ToggleIcon = isCollapsed ? ChevronRight : ChevronDown;
+
+                      return (
+                        <div 
+                          key={rowIdx}
+                          onClick={() => {
+                            if (row.isCollapsible) {
+                              setCollapsedRows(prev => ({ ...prev, [row.key]: !prev[row.key] }));
+                            }
+                          }}
+                          className={`flex items-center justify-between border-b border-gray-100/50 py-3.5 px-4 bg-white hover:bg-gray-50/50 transition-colors ${
+                            row.isCollapsible ? 'cursor-pointer' : ''
+                          }`}
+                        >
+                          <div 
+                            className={`w-[36%] flex items-center text-[11.5px] leading-tight select-none text-left ${
+                              row.isBold ? 'font-bold text-gray-900' : 'text-gray-500 font-medium'
+                            } ${row.isChild ? 'pl-4' : ''}`}
+                          >
+                            {row.isCollapsible && (
+                              <ToggleIcon className="w-3.5 h-3.5 text-gray-400 mr-1 shrink-0" strokeWidth={3} />
+                            )}
+                            <span className="truncate">{row.key}</span>
+                          </div>
+
+                          <div className="flex-1 flex justify-between">
+                            {vals.map((val, valIdx) => {
+                              const displayVal = getDisplayValue(val, valIdx);
+                              const isNegative = displayVal.includes('(');
+                              
+                              return (
+                                <div 
+                                  key={valIdx}
+                                  className={`w-[23%] text-right text-[11px] font-semibold pr-1 ${
+                                    row.isBold 
+                                      ? 'text-gray-900 font-extrabold' 
+                                      : isNegative 
+                                        ? 'text-gray-400 font-medium' 
+                                        : 'text-gray-600 font-medium'
+                                  }`}
+                                >
+                                  {displayVal}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
       </div>
 

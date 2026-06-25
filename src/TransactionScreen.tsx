@@ -17,8 +17,10 @@ const formatCompact = (num: number | undefined | null) => {
     return new Intl.NumberFormat('en-US', { notation: "compact", compactDisplay: "short", maximumFractionDigits: 2 }).format(num);
 }
 
-export default function TransactionScreen({ symbol, onBack, initialType = 'buy' }: { symbol: string, onBack: () => void, initialType?: 'buy' | 'sell' }) {
+export default function TransactionScreen({ symbol, onBack, initialType = 'buy', tradingBalance, assets, onBuy, onSell }: { symbol: string, onBack: () => void, initialType?: 'buy' | 'sell', tradingBalance: number, assets: any[], onBuy: (s: string, a: number, p: number, c: number, ot: 'limit' | 'market') => void, onSell: (s: string, a: number, p: number, r: number, ot: 'limit' | 'market') => void }) {
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>(initialType);
+  const [orderType, setOrderType] = useState<'limit' | 'market'>('market');
+  const [showOrderTypeMenu, setShowOrderTypeMenu] = useState(false);
   const [coinInfo, setCoinInfo] = useState<any>(null);
   const [ticker, setTicker] = useState<any>(null);
   const [orderbook, setOrderbook] = useState<{bids: any[], asks: any[]}>({ bids: [], asks: [] });
@@ -31,19 +33,21 @@ export default function TransactionScreen({ symbol, onBack, initialType = 'buy' 
   const cgId = symbolToId[symbol.toUpperCase()] || symbol.toLowerCase();
   
   const IDR_RATE = 16000;
-  const balanceUSDT = 124.40; 
-  const balanceIDR = balanceUSDT * IDR_RATE;
-  const cryptoBalance = 0.5; 
+  const balanceIDR = tradingBalance;
+  const balanceUSDT = balanceIDR / IDR_RATE; 
+  const assetInPortfolio = assets.find(a => a.code === symbol);
+  const cryptoBalance = assetInPortfolio ? assetInPortfolio.amount : 0;
   const feeRate = 0.001; 
 
-  const priceNum = parseFloat(priceInput) || 0;
+  const isBuy = orderSide === 'buy';
+  const currentTickerPrice = ticker ? ticker.price : 0;
+  const priceNum = orderType === 'market' ? currentTickerPrice : (parseFloat(priceInput) || 0);
   const amountNum = parseFloat(amountInput) || 0;
   const investmentUSDT = priceNum * amountNum;
   const feeUSDT = investmentUSDT * feeRate;
-  const totalCostUSDT = investmentUSDT + feeUSDT;
+  const totalCostUSDT = isBuy ? investmentUSDT + feeUSDT : investmentUSDT - feeUSDT;
   const totalCostIDR = totalCostUSDT * IDR_RATE;
   
-  const isBuy = orderSide === 'buy';
   const availableBalanceIDR = isBuy ? balanceIDR : cryptoBalance * priceNum * IDR_RATE;
   
   let isValid = false;
@@ -68,6 +72,11 @@ export default function TransactionScreen({ symbol, onBack, initialType = 'buy' 
   const [showSuccess, setShowSuccess] = useState(false);
 
   const handleConfirm = () => {
+    if (isBuy) {
+        onBuy(symbol, amountNum, priceNum, totalCostIDR, orderType);
+    } else {
+        onSell(symbol, amountNum, priceNum, totalCostIDR, orderType); // totalCostIDR is actually totalRevenueIDR here
+    }
     setShowConfirm(false);
     setShowSuccess(true);
   };
@@ -239,9 +248,17 @@ export default function TransactionScreen({ symbol, onBack, initialType = 'buy' 
           <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
         </button>
         
-        <div className="flex items-center gap-1 border border-[#00a85a]/20 bg-[#00a85a]/5 rounded-full px-3 py-1.5 cursor-pointer">
-           <span className="text-[13px] font-semibold text-[#00a85a]">Limit Order</span>
-           <ChevronDown className="w-4 h-4 text-[#00a85a]" strokeWidth={2.5} />
+        <div className="relative">
+          <div onClick={() => setShowOrderTypeMenu(!showOrderTypeMenu)} className="flex items-center gap-1 border border-[#00a85a]/20 bg-[#00a85a]/5 rounded-full px-3 py-1.5 cursor-pointer">
+             <span className="text-[13px] font-semibold text-[#00a85a] capitalize">{orderType} Order</span>
+             <ChevronDown className="w-4 h-4 text-[#00a85a]" strokeWidth={2.5} />
+          </div>
+          {showOrderTypeMenu && (
+            <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div onClick={() => { setOrderType('market'); setShowOrderTypeMenu(false); }} className={`px-4 py-2 text-[13px] font-medium cursor-pointer ${orderType === 'market' ? 'bg-[#00a85a]/10 text-[#00a85a]' : 'text-gray-700 hover:bg-gray-50'}`}>Market Order</div>
+              <div onClick={() => { setOrderType('limit'); setShowOrderTypeMenu(false); }} className={`px-4 py-2 text-[13px] font-medium cursor-pointer ${orderType === 'limit' ? 'bg-[#00a85a]/10 text-[#00a85a]' : 'text-gray-700 hover:bg-gray-50'}`}>Limit Order</div>
+            </div>
+          )}
         </div>
       </div>
       
@@ -343,17 +360,23 @@ export default function TransactionScreen({ symbol, onBack, initialType = 'buy' 
            {/* PRICE INPUT */}
            <div className="flex items-center justify-between mb-5">
               <span className="text-[13px] text-gray-800 font-medium">Price</span>
-              <div className="flex items-center gap-4">
-                 <button onClick={() => handlePriceChange(-1)} className="w-6 h-6 flex items-center justify-center font-bold text-gray-600 text-lg hover:bg-gray-100 rounded-full">–</button>
-                 <input 
-                   type="number"
-                   value={priceInput}
-                   onChange={e => setPriceInput(e.target.value)}
-                   className="w-24 text-center font-bold text-gray-900 text-[15px] outline-none border-b border-dashed border-gray-300 pb-1"
-                   placeholder="0"
-                 />
-                 <button onClick={() => handlePriceChange(1)} className="w-6 h-6 flex items-center justify-center font-bold text-gray-600 text-lg hover:bg-gray-100 rounded-full">+</button>
-              </div>
+              {orderType === 'market' ? (
+                <div className="flex items-center justify-end">
+                   <span className="w-24 text-right font-bold text-gray-900 text-[15px]">Market Price</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                   <button onClick={() => handlePriceChange(-1)} className="w-6 h-6 flex items-center justify-center font-bold text-gray-600 text-lg hover:bg-gray-100 rounded-full">–</button>
+                   <input 
+                     type="number"
+                     value={priceInput}
+                     onChange={e => setPriceInput(e.target.value)}
+                     className="w-24 text-center font-bold text-gray-900 text-[15px] outline-none border-b border-dashed border-gray-300 pb-1"
+                     placeholder="0"
+                   />
+                   <button onClick={() => handlePriceChange(1)} className="w-6 h-6 flex items-center justify-center font-bold text-gray-600 text-lg hover:bg-gray-100 rounded-full">+</button>
+                </div>
+              )}
            </div>
            
            {/* AMOUNT INPUT */}
