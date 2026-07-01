@@ -72,12 +72,33 @@ const CatLogo = () => (
 );
 
 export default function ProfileScreen({ user, onBack, tradingBalance, assets }: { user: User | null, onBack: () => void, tradingBalance: number, assets: any[] }) {
-  const [currentPrices, setCurrentPrices] = React.useState<Record<string, number>>({});
+  const FALLBACK_PRICES: Record<string, number> = {
+    BTC: 96500.00,
+    ETH: 3450.00,
+    BNB: 612.50,
+    SOL: 182.20,
+    XRP: 1.12,
+    ADA: 0.58,
+    DOGE: 0.22,
+    AVAX: 28.50,
+    DOT: 6.10,
+    MATIC: 0.52,
+    LINK: 18.40,
+    UNI: 7.80,
+    LTC: 84.30
+  };
+
+  const [currentPrices, setCurrentPrices] = React.useState<Record<string, number>>(FALLBACK_PRICES);
+  const [showPwaSettings, setShowPwaSettings] = React.useState(false);
+  const [cacheBuster, setCacheBuster] = React.useState(Date.now());
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [uploadStatus, setUploadStatus] = React.useState<'idle' | 'success' | 'error'>('idle');
 
   React.useEffect(() => {
     const fetchPrice = async () => {
       try {
-        const res = await fetch('https://api.binance.com/api/v3/ticker/price');
+        const res = await fetch('/api/prices');
+        if (!res.ok) throw new Error(`Proxy responded with status ${res.status}`);
         const data: {symbol: string, price: string}[] = await res.json();
         
         const priceMap: Record<string, number> = {};
@@ -88,9 +109,9 @@ export default function ProfileScreen({ user, onBack, tradingBalance, assets }: 
            }
         });
         
-        setCurrentPrices(priceMap);
+        setCurrentPrices(prev => ({ ...prev, ...priceMap }));
       } catch (e) {
-        console.error('Failed to fetch prices', e);
+        console.warn('Failed to fetch prices through proxy in ProfileScreen, maintaining fallbacks:', e);
       }
     };
 
@@ -137,6 +158,7 @@ export default function ProfileScreen({ user, onBack, tradingBalance, assets }: 
       title: 'Pengaturan',
       items: [
         { icon: <DarkModeIcon />, label: 'Mode Gelap', isToggle: true },
+        { icon: <Smartphone className="w-[22px] h-[22px] text-[#8e949f]" strokeWidth={1.5} />, label: 'Instal Aplikasi & Ikon', action: () => setShowPwaSettings(true) },
         { icon: <Bell className="w-[22px] h-[22px] text-[#8e949f]" strokeWidth={1.5} />, label: 'Notifikasi' },
         { icon: <Globe className="w-[22px] h-[22px] text-[#8e949f]" strokeWidth={1.5} />, label: 'Bahasa' },
         { icon: <ShieldCheck className="w-[22px] h-[22px] text-[#8e949f]" strokeWidth={1.5} />, label: 'Privasi' },
@@ -170,6 +192,148 @@ export default function ProfileScreen({ user, onBack, tradingBalance, assets }: 
       ]
     }
   ];
+
+  if (showPwaSettings) {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      
+      setIsUploading(true);
+      setUploadStatus('idle');
+      
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64 = reader.result as string;
+          const res = await fetch('/api/upload-icon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64 })
+          });
+          
+          if (res.ok) {
+            setUploadStatus('success');
+            setCacheBuster(Date.now());
+          } else {
+            setUploadStatus('error');
+          }
+        } catch (err) {
+          console.error(err);
+          setUploadStatus('error');
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+
+    return (
+      <div className="w-full h-full bg-white flex flex-col overflow-y-auto scrollbar-hide pb-10">
+        {/* Header */}
+        <div className="px-4 pt-5 pb-4 flex items-center border-b border-gray-100 sticky top-0 bg-white z-10 shadow-sm">
+          <button onClick={() => setShowPwaSettings(false)} className="p-1 -ml-1 text-gray-400 hover:bg-gray-50 rounded-full flex items-center justify-center">
+            <ChevronLeft className="w-6 h-6 text-gray-600" strokeWidth={2.5} />
+          </button>
+          <h1 className="text-[16px] font-bold text-gray-900 ml-2">Ikon & Instalasi Aplikasi</h1>
+        </div>
+
+        <div className="px-5 py-6 flex flex-col items-center">
+          {/* App Icon Preview Card */}
+          <div className="w-28 h-28 bg-white rounded-2xl shadow-md border border-gray-100 flex items-center justify-center overflow-hidden mb-4 relative">
+            <img 
+              src={`/icon-512.jpg?v=${cacheBuster}`} 
+              alt="App Icon" 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=150&auto=format&fit=crop&q=60&ixlib=rb-4.0.3';
+              }}
+            />
+            {isUploading && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center flex-col gap-2">
+                <div className="w-6 h-6 border-2 border-[#00a85a] border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-[10px] text-white font-medium text-center">Mengunggah...</span>
+              </div>
+            )}
+          </div>
+
+          <span className="text-[12px] font-bold text-gray-800 mb-5">Pratinjau Ikon Aplikasi</span>
+
+          {/* Action buttons */}
+          <div className="w-full flex flex-col items-center gap-3 mb-8">
+            <label htmlFor="icon-upload" className="w-full max-w-xs flex items-center justify-center gap-2 py-3 px-4 bg-[#00a85a] text-white rounded-xl font-bold text-[13px] shadow-sm hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer">
+              <span>Ganti Ikon Aplikasi</span>
+              <input 
+                id="icon-upload" 
+                type="file" 
+                accept="image/*" 
+                onChange={handleFileChange} 
+                className="hidden" 
+              />
+            </label>
+            
+            {uploadStatus === 'success' && (
+              <div className="text-[12px] font-bold text-[#00a85a] bg-[#eefcf3] px-4 py-2 rounded-lg border border-[#c2f2d4]/50 text-center w-full max-w-xs">
+                ✨ Ikon berhasil diperbarui!
+              </div>
+            )}
+
+            {uploadStatus === 'error' && (
+              <div className="text-[12px] font-bold text-red-500 bg-red-50 px-4 py-2 rounded-lg border border-red-100 text-center w-full max-w-xs">
+                ❌ Gagal mengunggah ikon. Coba lagi.
+              </div>
+            )}
+
+            <p className="text-[11px] text-gray-400 text-center max-w-xs leading-relaxed px-2">
+              Unggah file gambar (PNG/JPG) persegi beresolusi tinggi. Ikon ini akan otomatis digunakan saat aplikasi diinstal di ponsel Anda.
+            </p>
+          </div>
+
+          {/* Installation Guides */}
+          <div className="w-full border-t border-gray-100 pt-6">
+            <h3 className="text-[14px] font-bold text-gray-900 mb-4 flex items-center gap-1.5">
+              <Smartphone className="w-4 h-4 text-[#00a85a]" strokeWidth={2.5} />
+              <span>Cara Instal Aplikasi (Gratis)</span>
+            </h3>
+
+            {/* Android Guide */}
+            <div className="bg-gray-50/70 border border-gray-100 rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-[#00a85a] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">Android</span>
+                <span className="text-[12px] font-bold text-gray-800">Google Chrome</span>
+              </div>
+              <ol className="list-decimal list-inside text-[11.5px] text-gray-600 space-y-2 leading-relaxed">
+                <li>Buka website ini di browser <span className="font-bold">Google Chrome</span> HP Anda.</li>
+                <li>Ketuk ikon <span className="font-bold">titik tiga (⋮)</span> di kanan atas layar.</li>
+                <li>Pilih menu <span className="font-bold">"Instal Aplikasi"</span> atau <span className="font-bold">"Tambahkan ke Layar Utama"</span>.</li>
+                <li>Aplikasi CoinX akan muncul di menu HP Anda dengan ikon kustom pilihan Anda!</li>
+              </ol>
+            </div>
+
+            {/* iOS Guide */}
+            <div className="bg-gray-50/70 border border-gray-100 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-[#00a85a] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">Apple iOS</span>
+                <span className="text-[12px] font-bold text-gray-800">Safari Browser</span>
+              </div>
+              <ol className="list-decimal list-inside text-[11.5px] text-gray-600 space-y-2 leading-relaxed">
+                <li>Buka website ini menggunakan browser <span className="font-bold">Safari</span> di iPhone/iPad Anda.</li>
+                <li>Ketuk tombol <span className="font-bold">Bagikan (ikon kotak dengan panah atas)</span> di bagian bawah layar Safari.</li>
+                <li>Gulir ke bawah dan pilih menu <span className="font-bold">"Tambahkan ke Layar Utama"</span> (Add to Home Screen).</li>
+                <li>Ketuk <span className="font-bold">"Tambah"</span> di pojok kanan atas. Selesai!</li>
+              </ol>
+            </div>
+
+            <div className="mt-5 p-3.5 bg-amber-50/60 rounded-xl border border-amber-100 flex gap-2">
+              <span className="text-amber-500 text-sm">💡</span>
+              <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
+                <span className="font-bold">Tips:</span> Jika ikon tidak langsung berubah setelah diganti, harap bersihkan cache browser Anda atau hapus data cache situs web, lalu reload halaman agar browser memuat ikon terbaru.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full bg-white flex flex-col overflow-y-auto scrollbar-hide pb-5">

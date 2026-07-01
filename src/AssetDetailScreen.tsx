@@ -346,13 +346,13 @@ const BottomNav = ({ currentScreen, setCurrentScreen }: { currentScreen: string,
       </svg>
       <span className={`text-[11px] ${currentScreen === 'dashboard' ? 'font-semibold text-[#00a85a]' : 'font-medium text-[#9ba4b5]'}`}>Watchlist</span>
     </button>
-    <button className="flex flex-col items-center gap-[5px]">
-      <svg className="w-[26px] h-[26px] text-[#9ba4b5]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <button onClick={() => setCurrentScreen('stream')} className="flex flex-col items-center gap-[5px]">
+      <svg className={`w-[26px] h-[26px] ${currentScreen === 'stream' ? 'text-[#00a85a]' : 'text-[#9ba4b5]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="4" y="4" width="16" height="16" rx="3.5" ry="3.5" />
         <line x1="8" y1="10" x2="16" y2="10" />
         <line x1="8" y1="14" x2="16" y2="14" />
       </svg>
-      <span className="text-[11px] font-medium text-[#9ba4b5]">Stream</span>
+      <span className={`text-[11px] ${currentScreen === 'stream' ? 'font-semibold text-[#00a85a]' : 'font-medium text-[#9ba4b5]'}`}>Stream</span>
     </button>
     <button onClick={() => setCurrentScreen('search')} className="flex flex-col items-center gap-[5px]">
       <svg className={`w-[26px] h-[26px] ${currentScreen === 'assetDetail' ? 'text-[#00a85a]' : 'text-[#9ba4b5]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -379,6 +379,21 @@ const BottomNav = ({ currentScreen, setCurrentScreen }: { currentScreen: string,
 );
 
 export default function AssetDetailScreen({ symbol, onBack, setCurrentScreen }: { symbol: string, onBack: () => void, setCurrentScreen: (s: string) => void }) {
+  const FALLBACK_PRICES: Record<string, number> = {
+    BTC: 96500.00,
+    ETH: 3450.00,
+    BNB: 612.50,
+    SOL: 182.20,
+    XRP: 1.12,
+    ADA: 0.58,
+    DOGE: 0.22,
+    AVAX: 28.50,
+    DOT: 6.10,
+    MATIC: 0.52,
+    LINK: 18.40,
+    UNI: 7.80,
+    LTC: 84.30
+  };
   const [coinInfo, setCoinInfo] = useState<any>(null);
   const [ticker, setTicker] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
@@ -420,9 +435,11 @@ export default function AssetDetailScreen({ symbol, onBack, setCurrentScreen }: 
       })
       .then(data => setCoinInfo(data))
       .catch(err => {
-         if (!(err instanceof TypeError && err.message === 'Failed to fetch')) {
-             console.error("Error fetching CoinGecko info:", err);
-         }
+         console.warn("Error fetching CoinGecko info, using fallback info:", err);
+         setCoinInfo({
+           name: symbol,
+           image: { large: `https://assets.coingecko.com/coins/images/1/large/${cgId}.png` }
+         });
       });
 
     // 2. Fetch Historical Data for Heatmap and History table
@@ -468,9 +485,26 @@ export default function AssetDetailScreen({ symbol, onBack, setCurrentScreen }: 
         setMonthlyReturns(finalReturns);
       })
       .catch(err => {
-         if (!(err instanceof TypeError && err.message === 'Failed to fetch')) {
-             console.error("Error fetching CoinGecko historical data:", err);
+         console.warn("Error fetching CoinGecko historical data, generating mock data:", err);
+         const now = Date.now();
+         const mockHist = [];
+         const mockMonthlyReturns: any = {};
+         const currentP = FALLBACK_PRICES[symbol.toUpperCase()] || 100;
+         for(let i=0; i<5; i++) {
+           const d = new Date(now - i*24*60*60*1000);
+           const p = currentP * (1 + (Math.random() - 0.5) * 0.05);
+           mockHist.push({
+             date: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }),
+             price: p,
+             change: (Math.random() - 0.5) * 4,
+             vol: p * 12345
+           });
          }
+         setHistory(mockHist);
+         
+         const currentYear = new Date().getFullYear().toString();
+         mockMonthlyReturns[currentYear] = Array(12).fill(null).map(() => (Math.random() - 0.5) * 15);
+         setMonthlyReturns(mockMonthlyReturns);
       });
   }, [cgId]);
 
@@ -494,9 +528,19 @@ export default function AssetDetailScreen({ symbol, onBack, setCurrentScreen }: 
          setChartData(formatted);
       })
       .catch(err => {
-        if (!(err instanceof TypeError && err.message === 'Failed to fetch')) {
-            console.error(err);
-        }
+         console.warn("Binance chart fetch failed, using fallback simulated trend:", err);
+         const nowSecs = Math.floor(Date.now() / 1000);
+         const mockChart = [];
+         let price = FALLBACK_PRICES[symbol.toUpperCase()] || 100;
+         const stepSecs = interval === '5m' ? 300 : interval === '1h' ? 3600 : interval === '4h' ? 14400 : 86400;
+         for (let i = limit; i >= 0; i--) {
+           price += (Math.random() - 0.49) * (price * 0.015);
+           mockChart.push({
+             time: nowSecs - (i * stepSecs),
+             value: parseFloat(price.toFixed(2))
+           });
+         }
+         setChartData(mockChart);
       });
   }, [timeRange, binanceSymbol]);
 

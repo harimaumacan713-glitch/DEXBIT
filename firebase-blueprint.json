@@ -1,0 +1,34 @@
+{
+  "entities": {
+    "posts": {
+      "title": "Post",
+      "description": "A public post in the Stockbit-style Stream with optional AI Summary card and stock info",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhoto": { "type": "string" },
+        "authorEmail": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "likesCount": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "stockCode": { "type": "string" },
+        "stockTitle": { "type": "string" },
+        "aiSummaryTitle": { "type": "string" },
+        "aiSummaryText": { "type": "string" },
+        "aiSummaryBullets": { "type": "array" },
+        "aiSummaryTakeaway": { "type": "string" },
+        "hasAiSummary": { "type": "boolean" }
+      },
+      "required": ["id", "authorName", "authorPhoto", "authorEmail", "content", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/posts/{postId}": {
+      "schema": "posts",
+      "description": "Collection of social stream posts"
+    }
+  }
+}

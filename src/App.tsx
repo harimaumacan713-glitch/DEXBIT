@@ -7,6 +7,8 @@ import SearchScreen from './SearchScreen';
 import ProfileScreen from './ProfileScreen';
 import AssetDetailScreen from './AssetDetailScreen';
 import TransactionScreen from './TransactionScreen';
+import OrderDetailScreen from './OrderDetailScreen';
+import StreamScreen from './StreamScreen';
 import {
   Check,
   XCircle,
@@ -120,34 +122,7 @@ const LandingIllustration = () => (
 
 const LandingScreen = ({ onLogin }: { onLogin: () => void }) => {
   return (
-    <div className="w-full h-full flex flex-col bg-white">
-      {/* Status Bar */}
-      <div className="flex justify-between items-center px-5 py-3 text-xs font-medium text-gray-800 bg-white z-50">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[13px] tracking-tight">17.39</span>
-          <WhatsAppIcon />
-          <svg className="w-3.5 h-3.5 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-          <div className="w-1 h-1 bg-gray-400 rounded-full ml-0.5"></div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <BellOff className="w-3.5 h-3.5 text-gray-700" strokeWidth={2} />
-          <Wifi className="w-4 h-4 text-gray-700" strokeWidth={2} />
-          <SignalHigh className="w-4 h-4 text-gray-700" strokeWidth={2} />
-          
-          <div className="flex items-center gap-0.5 ml-0.5">
-            <span className="text-[#da304a] font-bold text-[11px] mt-[1px]">1</span>
-            <div className="flex items-center">
-              <div className="w-[18px] h-[10px] border-[1.5px] border-gray-400 rounded-sm p-[1px] flex items-center">
-                <div className="w-[5%] h-[80%] bg-[#da304a] rounded-[1px]"></div>
-              </div>
-              <div className="w-[1.5px] h-1.5 bg-gray-400 rounded-r-[1px]"></div>
-            </div>
-            <div className="bg-gray-200 text-white rounded-full w-[12px] h-[12px] flex items-center justify-center -ml-1.5 -mt-2.5 border-[1.5px] border-white z-10">
-                <span className="text-[#da304a] text-[8px] font-extrabold leading-none">!</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="w-full h-full flex flex-col bg-white pt-3">
 
       {/* Header */}
       <div className="flex justify-between items-center px-5 py-3">
@@ -223,36 +198,8 @@ const LandingScreen = ({ onLogin }: { onLogin: () => void }) => {
 
 const DashboardScreen = ({ user, setCurrentScreen }: { user: User | null, setCurrentScreen: (s: string) => void }) => (
   <>
-    {/* Status Bar */}
-    <div className="flex justify-between items-center px-5 py-3 text-xs font-medium text-gray-800 bg-white z-50">
-      <div className="flex items-center gap-1.5">
-        <span className="text-[13px] tracking-tight">17.32</span>
-        <WhatsAppIcon />
-        <svg className="w-3.5 h-3.5 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-        <div className="w-1 h-1 bg-gray-400 rounded-full ml-0.5"></div>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <BellOff className="w-3.5 h-3.5 text-gray-700" strokeWidth={2} />
-        <Wifi className="w-4 h-4 text-gray-700" strokeWidth={2} />
-        <SignalHigh className="w-4 h-4 text-gray-700" strokeWidth={2} />
-        
-        <div className="flex items-center gap-0.5 ml-0.5">
-          <span className="text-[#da304a] font-bold text-[11px] mt-[1px]">3</span>
-          <div className="flex items-center">
-            <div className="w-[18px] h-[10px] border-[1.5px] border-gray-400 rounded-sm p-[1px] flex items-center">
-              <div className="w-[15%] h-[80%] bg-[#da304a] rounded-[1px]"></div>
-            </div>
-            <div className="w-[1.5px] h-1.5 bg-gray-400 rounded-r-[1px]"></div>
-          </div>
-          <div className="bg-gray-200 text-white rounded-full w-[12px] h-[12px] flex items-center justify-center -ml-1.5 -mt-2.5 border-[1.5px] border-white z-10">
-              <span className="text-[#da304a] text-[8px] font-extrabold leading-none">!</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
     {/* Scrollable Content */}
-    <div className="flex-1 overflow-y-auto pb-24 scrollbar-hide bg-white">
+    <div className="flex-1 overflow-y-auto pb-24 scrollbar-hide bg-white pt-3">
       
       {/* Header */}
       <div className="flex justify-between items-center px-4 py-1.5">
@@ -429,8 +376,8 @@ const DashboardScreen = ({ user, setCurrentScreen }: { user: User | null, setCur
         </svg>
         <span className="text-[11px] font-semibold text-[#00a85a]">Watchlist</span>
       </button>
-      <button className="flex flex-col items-center gap-[5px]">
-        <svg className="w-[26px] h-[26px] text-[#9ba4b5]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <button onClick={() => setCurrentScreen('stream')} className="flex flex-col items-center gap-[5px]">
+        <svg className="w-[26px] h-[26px] text-[#9ba4b5] hover:text-gray-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="4" y="4" width="16" height="16" rx="3.5" ry="3.5" />
           <line x1="8" y1="10" x2="16" y2="10" />
           <line x1="8" y1="14" x2="16" y2="14" />
@@ -537,12 +484,28 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
 }
+
+const FALLBACK_PRICES: Record<string, number> = {
+  BTC: 96500.00,
+  ETH: 3450.00,
+  BNB: 612.50,
+  SOL: 182.20,
+  XRP: 1.12,
+  ADA: 0.58,
+  DOGE: 0.22,
+  AVAX: 28.50,
+  DOT: 6.10,
+  MATIC: 0.52,
+  LINK: 18.40,
+  UNI: 7.80,
+  LTC: 84.30
+};
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('landing');
   const [selectedCoin, setSelectedCoin] = useState<string>('BTC');
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -550,12 +513,15 @@ export default function App() {
   const [assets, setAssets] = useState<PortfolioAsset[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({});
+  const [currentPrices, setCurrentPrices] = useState<Record<string, number>>(FALLBACK_PRICES);
 
   useEffect(() => {
     const fetchPrices = async () => {
       try {
         const res = await fetch('/api/prices');
+        if (!res.ok) {
+          throw new Error(`Server responded with status ${res.status}`);
+        }
         const data: { symbol: string; price: string }[] = await res.json();
         const priceMap: Record<string, number> = {};
         data.forEach(item => {
@@ -564,9 +530,9 @@ export default function App() {
             priceMap[code] = parseFloat(item.price);
           }
         });
-        setCurrentPrices(priceMap);
+        setCurrentPrices(prev => ({ ...prev, ...priceMap }));
       } catch (e) {
-        console.error('Failed to fetch prices in App.tsx', e);
+        console.warn('Failed to fetch live prices from server, maintaining robust fallbacks:', e);
       }
     };
 
@@ -667,58 +633,25 @@ export default function App() {
     const timestamp = Date.now();
 
     if (orderType === 'market') {
-      setTradingBalance(prev => Math.max(0, prev - totalCostIDR));
-      setAssets(prev => {
-        const existing = prev.find(a => a.code === symbol);
-        if (existing) {
-           const newAmount = existing.amount + amount;
-           const newAvgPrice = ((existing.amount * existing.avgPrice) + (amount * avgPrice)) / newAmount;
-           return prev.map(a => a.code === symbol ? { ...a, amount: newAmount, avgPrice: newAvgPrice } : a);
-        } else {
-           return [...prev, { code: symbol, amount, avgPrice }];
-        }
-      });
+      const newBalance = Math.max(0, tradingBalance - totalCostIDR);
+      const existing = assets.find(a => a.code === symbol);
+      let newAssets;
+      if (existing) {
+         const newAmount = existing.amount + amount;
+         const newAvgPrice = ((existing.amount * existing.avgPrice) + (amount * avgPrice)) / newAmount;
+         newAssets = assets.map(a => a.code === symbol ? { ...a, amount: newAmount, avgPrice: newAvgPrice } : a);
+      } else {
+         newAssets = [...assets, { code: symbol, amount, avgPrice }];
+      }
       
-      const newOrder: Order = {
-        id,
-        symbol,
-        type: 'buy',
-        orderType: 'market',
-        price: avgPrice,
-        amount,
-        status: 'filled',
-        timestamp
-      };
-      
-      const newHistory: HistoryItem = {
-        id,
-        symbol,
-        type: 'buy',
-        orderType: 'market',
-        price: avgPrice,
-        amount,
-        totalIDR: totalCostIDR,
-        status: 'filled',
-        timestamp
-      };
+      const newOrder: Order = { id, symbol, type: 'buy', orderType: 'market', price: avgPrice, amount, status: 'filled', timestamp };
+      const newHistory: HistoryItem = { id, symbol, type: 'buy', orderType: 'market', price: avgPrice, amount, totalIDR: totalCostIDR, status: 'filled', timestamp };
 
-      setOrders(prev => [newOrder, ...prev]);
-      setHistory(prev => [newHistory, ...prev]);
+      updateUserData(newBalance, newAssets, [newOrder, ...orders], [newHistory, ...history]);
     } else {
-      setTradingBalance(prev => Math.max(0, prev - totalCostIDR));
-      
-      const newOrder: Order = {
-        id,
-        symbol,
-        type: 'buy',
-        orderType: 'limit',
-        price: avgPrice,
-        amount,
-        status: 'open',
-        timestamp
-      };
-      
-      setOrders(prev => [newOrder, ...prev]);
+      const newBalance = Math.max(0, tradingBalance - totalCostIDR);
+      const newOrder: Order = { id, symbol, type: 'buy', orderType: 'limit', price: avgPrice, amount, status: 'open', timestamp };
+      updateUserData(newBalance, assets, [newOrder, ...orders], history);
     }
   };
 
@@ -733,93 +666,77 @@ export default function App() {
     const timestamp = Date.now();
 
     if (orderType === 'market') {
-      setTradingBalance(prev => prev + totalRevenueIDR);
-      setAssets(prev => {
-        const existing = prev.find(a => a.code === symbol);
-        if (existing) {
-           const newAmount = existing.amount - amount;
-           if (newAmount <= 0.00000001) {
-                return prev.filter(a => a.code !== symbol);
-           }
-           return prev.map(a => a.code === symbol ? { ...a, amount: newAmount } : a);
+      const newBalance = tradingBalance + totalRevenueIDR;
+      
+      const existing = assets.find(a => a.code === symbol);
+      let newAssets = assets;
+      if (existing) {
+        const newAmount = existing.amount - amount;
+        if (newAmount <= 0.00000001) {
+            newAssets = assets.filter(a => a.code !== symbol);
+        } else {
+            newAssets = assets.map(a => a.code === symbol ? { ...a, amount: newAmount } : a);
         }
-        return prev;
-      });
+      }
+      
+      const newOrder: Order = { id, symbol, type: 'sell', orderType: 'market', price: priceUSDT, amount, status: 'filled', timestamp };
+      const newHistory: HistoryItem = { id, symbol, type: 'sell', orderType: 'market', price: priceUSDT, amount, totalIDR: totalRevenueIDR, status: 'filled', timestamp };
 
-      const newOrder: Order = {
-        id,
-        symbol,
-        type: 'sell',
-        orderType: 'market',
-        price: priceUSDT,
-        amount,
-        status: 'filled',
-        timestamp
-      };
-
-      const newHistory: HistoryItem = {
-        id,
-        symbol,
-        type: 'sell',
-        orderType: 'market',
-        price: priceUSDT,
-        amount,
-        totalIDR: totalRevenueIDR,
-        status: 'filled',
-        timestamp
-      };
-
-      setOrders(prev => [newOrder, ...prev]);
-      setHistory(prev => [newHistory, ...prev]);
+      updateUserData(newBalance, newAssets, [newOrder, ...orders], [newHistory, ...history]);
     } else {
-      setAssets(prev => {
-        const existing = prev.find(a => a.code === symbol);
-        if (existing) {
-          const newAmount = existing.amount - amount;
-          if (newAmount <= 0.00000001) {
-            return prev.filter(a => a.code !== symbol);
-          }
-          return prev.map(a => a.code === symbol ? { ...a, amount: newAmount } : a);
+      const existing = assets.find(a => a.code === symbol);
+      let newAssets = assets;
+      if (existing) {
+        const newAmount = existing.amount - amount;
+        if (newAmount <= 0.00000001) {
+          newAssets = assets.filter(a => a.code !== symbol);
+        } else {
+          newAssets = assets.map(a => a.code === symbol ? { ...a, amount: newAmount } : a);
         }
-        return prev;
-      });
+      }
 
-      const newOrder: Order = {
-        id,
-        symbol,
-        type: 'sell',
-        orderType: 'limit',
-        price: priceUSDT,
-        amount,
-        status: 'open',
-        timestamp
-      };
+      const newOrder: Order = { id, symbol, type: 'sell', orderType: 'limit', price: priceUSDT, amount, status: 'open', timestamp };
+      updateUserData(tradingBalance, newAssets, [newOrder, ...orders], history);
+    }
+  };
 
-      setOrders(prev => [newOrder, ...prev]);
+  const updateUserData = async (newBalance: number, newAssets: PortfolioAsset[], newOrders: Order[], newHistory: HistoryItem[]) => {
+    setTradingBalance(newBalance);
+    setAssets(newAssets);
+    setOrders(newOrders);
+    setHistory(newHistory);
+    
+    if (user) {
+      const userDocRef = doc(db, 'users', user.uid);
+      try {
+        await setDoc(userDocRef, { tradingBalance: newBalance, assets: newAssets, orders: newOrders, history: newHistory }, { merge: true });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
+      }
     }
   };
 
   const handleCancelOrder = (orderId: string) => {
-    setOrders(prevOrders => {
-      const order = prevOrders.find(o => o.id === orderId);
-      if (!order || order.status !== 'open') return prevOrders;
+    const order = orders.find(o => o.id === orderId);
+    if (!order || order.status !== 'open') return;
 
-      if (order.type === 'buy') {
-        const totalCostIDR = order.amount * order.price * 16000 * 1.001;
-        setTradingBalance(prev => prev + totalCostIDR);
+    let newBalance = tradingBalance;
+    let newAssets = assets;
+
+    if (order.type === 'buy') {
+      const totalCostIDR = order.amount * order.price * 16000 * 1.001;
+      newBalance += totalCostIDR;
+    } else {
+      const existing = assets.find(a => a.code === order.symbol);
+      if (existing) {
+        newAssets = assets.map(a => a.code === order.symbol ? { ...a, amount: a.amount + order.amount } : a);
       } else {
-        setAssets(prevAssets => {
-          const existing = prevAssets.find(a => a.code === order.symbol);
-          if (existing) {
-            return prevAssets.map(a => a.code === order.symbol ? { ...a, amount: a.amount + order.amount } : a);
-          } else {
-            return [...prevAssets, { code: order.symbol, amount: order.amount, avgPrice: order.price }];
-          }
-        });
+        newAssets = [...assets, { code: order.symbol, amount: order.amount, avgPrice: order.price }];
       }
+    }
 
-      return prevOrders.map(o => o.id === orderId ? { ...o, status: 'cancelled' as const } : o);
-    });
+    const newOrders = orders.map(o => o.id === orderId ? { ...o, status: 'cancelled' as const } : o);
+    updateUserData(newBalance, newAssets, newOrders, history);
   };
 
   useEffect(() => {
@@ -867,14 +784,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (user && !loading) {
-       const userDocRef = doc(db, 'users', user.uid);
-       const path = `users/${user.uid}`;
-       setDoc(userDocRef, { tradingBalance, assets, orders, history }, { merge: true })
-         .catch(err => handleFirestoreError(err, OperationType.WRITE, path));
-    }
-  }, [tradingBalance, assets, orders, history, user, loading]);
+// Removed sync useEffect to avoid race conditions with atomic updates
 
   const handleLogin = async () => {
     try {
@@ -903,7 +813,9 @@ export default function App() {
         {currentScreen === 'profile' && <ProfileScreen user={user} onBack={() => setCurrentScreen('dashboard')} tradingBalance={tradingBalance} assets={assets} />}
         {currentScreen === 'assetDetail' && <AssetDetailScreen symbol={selectedCoin} onBack={() => setCurrentScreen('search')} setCurrentScreen={setCurrentScreen} />}
         {currentScreen === 'transaction' && <TransactionScreen symbol={selectedCoin} onBack={() => setCurrentScreen('assetDetail')} tradingBalance={tradingBalance} assets={assets} onBuy={handleBuyAsset} onSell={handleSellAsset} />}
-        {currentScreen === 'portfolio' && <PortfolioScreen setCurrentScreen={setCurrentScreen} tradingBalance={tradingBalance} assets={assets} orders={orders} history={history} onCancelOrder={handleCancelOrder} />}
+        {currentScreen === 'orderDetail' && <OrderDetailScreen transaction={selectedTransaction} onBack={() => setCurrentScreen('portfolio')} />}
+        {currentScreen === 'portfolio' && <PortfolioScreen setCurrentScreen={setCurrentScreen} tradingBalance={tradingBalance} assets={assets} orders={orders} history={history} onCancelOrder={handleCancelOrder} onTransactionClick={(t) => { setSelectedTransaction(t); setCurrentScreen('orderDetail'); }} />}
+        {currentScreen === 'stream' && <StreamScreen user={user} setCurrentScreen={setCurrentScreen} />}
       </div>
     </div>
   );

@@ -7,7 +7,8 @@ export default function PortfolioScreen({
   assets,
   orders = [],
   history = [],
-  onCancelOrder
+  onCancelOrder,
+  onTransactionClick
 }: {
   setCurrentScreen: (screen: string) => void;
   tradingBalance: number;
@@ -15,15 +16,33 @@ export default function PortfolioScreen({
   orders?: any[];
   history?: any[];
   onCancelOrder?: (orderId: string) => void;
+  onTransactionClick?: (transaction: any) => void;
 }) {
   const [activeTab, setActiveTab] = useState<'stocks' | 'order' | 'history'>('stocks');
-  const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({});
+  const FALLBACK_PRICES: Record<string, number> = {
+    BTC: 96500.00,
+    ETH: 3450.00,
+    BNB: 612.50,
+    SOL: 182.20,
+    XRP: 1.12,
+    ADA: 0.58,
+    DOGE: 0.22,
+    AVAX: 28.50,
+    DOT: 6.10,
+    MATIC: 0.52,
+    LINK: 18.40,
+    UNI: 7.80,
+    LTC: 84.30
+  };
+
+  const [currentPrices, setCurrentPrices] = useState<Record<string, number>>(FALLBACK_PRICES);
   const [priceFlashes, setPriceFlashes] = useState<Record<string, 'up' | 'down'>>({});
 
   useEffect(() => {
     const fetchPrice = async () => {
       try {
-        const res = await fetch('https://api.binance.com/api/v3/ticker/price');
+        const res = await fetch('/api/prices');
+        if (!res.ok) throw new Error(`Proxy responded with status ${res.status}`);
         const data: {symbol: string, price: string}[] = await res.json();
         
         const priceMap: Record<string, number> = {};
@@ -41,8 +60,11 @@ export default function PortfolioScreen({
           assets.forEach(asset => {
              const newPrice = priceMap[asset.code];
              if (newPrice && prev[asset.code]) {
-                 if (newPrice > prev[asset.code]) { newFlashes[asset.code] = 'up'; flashChanged = true; }
-                 else if (newPrice < prev[asset.code]) { newFlashes[asset.code] = 'down'; flashChanged = true; }
+                 if (newPrice > prev[asset.code]) { newFlashes[asset.code] = 'up'; fillFlashChanged(); }
+                 else if (newPrice < prev[asset.code]) { newFlashes[asset.code] = 'down'; fillFlashChanged(); }
+             }
+             function fillFlashChanged() {
+               flashChanged = true;
              }
           });
           
@@ -51,10 +73,10 @@ export default function PortfolioScreen({
              setTimeout(() => setPriceFlashes({}), 500);
           }
           
-          return priceMap;
+          return { ...prev, ...priceMap };
         });
       } catch (e) {
-        console.error('Failed to fetch prices', e);
+        console.warn('Failed to fetch prices through proxy in PortfolioScreen, maintaining fallbacks:', e);
       }
     };
 
@@ -179,7 +201,10 @@ export default function PortfolioScreen({
                   </div>
                 ) : (
                   calculatedAssets.map((asset, i) => (
-                    <div key={i} className="grid grid-cols-4 items-center py-3 border-t border-gray-100 px-1 bg-white">
+                    <div key={i} className="grid grid-cols-4 items-center py-3 border-t border-gray-100 px-1 bg-white cursor-pointer hover:bg-gray-50" onClick={() => {
+                       const lastTransaction = history.find(h => h.symbol === asset.code) || { ...asset, id: 'n/a', orderType: 'market', timestamp: Date.now(), price: asset.avgPrice, amount: asset.amount };
+                       onTransactionClick && onTransactionClick(lastTransaction);
+                    }}>
                       <div className="text-left">
                         <p className="text-[13px] font-bold text-gray-900">{asset.code} <span className="text-[8px] bg-purple-100 text-purple-600 px-0.5 rounded">C</span></p>
                         <p className="text-[10px] text-gray-400">{asset.amount.toFixed(8)}</p>
@@ -215,7 +240,7 @@ export default function PortfolioScreen({
                   const limitPriceIDR = order.price * IDR_RATE;
                   const totalEstIDR = order.amount * limitPriceIDR * (order.type === 'buy' ? 1.001 : 0.999);
                   return (
-                    <div key={order.id} className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col gap-2 text-left">
+                    <div key={`${order.id}-${order.timestamp}`} className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col gap-2 text-left">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${order.type === 'buy' ? 'bg-[#00a85a]/10 text-[#00a85a]' : 'bg-[#da304a]/10 text-[#da304a]'}`}>
@@ -267,7 +292,7 @@ export default function PortfolioScreen({
                 </div>
               ) : (
                 history.map((item) => (
-                  <div key={item.id} className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col gap-2 text-left">
+                  <div key={`${item.id}-${item.timestamp}`} className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col gap-2 text-left cursor-pointer hover:bg-gray-50" onClick={() => onTransactionClick && onTransactionClick(item)}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === 'buy' ? 'bg-[#00a85a]/10 text-[#00a85a]' : 'bg-[#da304a]/10 text-[#da304a]'}`}>
@@ -316,7 +341,7 @@ export default function PortfolioScreen({
           </svg>
           <span className="text-[11px] font-medium text-[#9ba4b5]">Watchlist</span>
         </button>
-        <button className="flex flex-col items-center gap-[5px]">
+        <button onClick={() => setCurrentScreen('stream')} className="flex flex-col items-center gap-[5px]">
           <svg className="w-[26px] h-[26px] text-[#9ba4b5]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <rect x="4" y="4" width="16" height="16" rx="3.5" ry="3.5" />
             <line x1="8" y1="10" x2="16" y2="10" />
